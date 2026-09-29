@@ -1,6 +1,19 @@
-import streamlit as st
+import os
+
 import pandas as pd
+import streamlit as st
+
+from sections.signal_model_page import get_model
+from utils import signal_model as sm
 from utils.api_fetchers import get_cell_towers, get_weather
+
+
+def _secret(name: str) -> str:
+    """Env var or .streamlit/secrets.toml, so keys need not be typed each time."""
+    try:
+        return os.getenv(name) or st.secrets.get(name, "")
+    except Exception:  # no secrets.toml
+        return os.getenv(name, "")
 
 def show():
     st.title("📡 Unified Network & Weather Analyzer")
@@ -8,8 +21,9 @@ def show():
 
     # Sidebar – API keys
     st.sidebar.header("🔑 API Keys")
-    OPENCELLID_KEY = st.sidebar.text_input("OpenCelliD Key", type="password")
-    WEATHER_KEY = st.sidebar.text_input("OpenWeatherMap Key", type="password")
+    OPENCELLID_KEY = st.sidebar.text_input("OpenCelliD Key", value=_secret("OPENCELLID_API_KEY"), type="password")
+    WEATHER_KEY = st.sidebar.text_input("OpenWeatherMap Key", value=_secret("OPENWEATHER_API_KEY"), type="password")
+    users_online = st.sidebar.slider("Assumed users online (cell load)", 1, 120, 30)
 
     # Inputs (both at once)
     st.subheader("📍 Inputs")
@@ -129,3 +143,27 @@ def show():
                 st.info("ℹ️ Weather API did not return results for the provided coordinates.")
             else:
                 st.info("ℹ️ Enter an OpenWeatherMap key to see weather.")
+
+        # -------------------- 📶 Live prediction --------------------
+        st.subheader("📶 Predicted signal at your location")
+        nearest_km = None
+        if not df_towers.empty and {"lat", "lon"}.issubset(df_towers.columns):
+            coords = df_towers[["lat", "lon"]].dropna()
+            if not coords.empty:
+                nearest_km = min(sm.haversine_km(lat, lon, r.lat, r.lon) for r in coords.itertuples())
+
+        owm_main = ""
+        if weather and weather.get("cod") == 200 and weather.get("weather"):
+            owm_main = weather["weather"][0].get("main", "")
+        category = sm.weather_category(owm_main)
+
+        if nearest_km is None:
+            st.info("Need at least one tower with coordinates to estimate distance.")
+        else:
+            model = get_model().model
+            rssi = sm.predict_one(model, max(nearest_km, 0.05), users_online, category)
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Nearest tower", f"{nearest_km:.2f} km")
+            c2.metric("Weather input", category, owm_main or "no live weather", delta_color="off")
+            c3.metric("Predicted signal", f"{rssi:.1f} dBm", sm.quality_label(rssi), delta_color="off")
+            st.caption("Random Forest from the Signal Model page; trained on simulated data unless you uploaded measurements.")

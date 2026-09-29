@@ -1,22 +1,26 @@
-# sections/landingpage.py
+from pathlib import Path
+
 import streamlit as st
 
+HERO = Path(__file__).resolve().parents[1] / "Images" / "ai-generated-8259052.jpg"
+
+
 def show():
-    st.title("Welcome to Network Optimizer 🚀")
-    st.image("Images/ai-generated-8259052.jpg", use_container_width=True)
-    st.write("Optimize your network using AI-powered insights.")
-    
+    st.title("Network Optimizer 📡")
+    st.image(str(HERO), width="stretch")
     st.markdown("""
-    Welcome to **Network Optimizer** 🚀  
-    This tool helps you analyze **cellular network coverage** 📡 and understand how **weather impacts connectivity** 🌦.
+    Estimate cellular signal quality at a location by combining **live cell-tower data**
+    (OpenCelliD), **live weather** (OpenWeatherMap) and a **Random Forest** signal model.
 
-    ### 🔑 Features:
-    - 📡 **Network Analysis**: Fetch nearby cell tower data from OpenCelliD.  
-    - 🌦 **Weather Impact**: Get real-time weather conditions from OpenWeatherMap.  
-    - 🤖 **AI Assistant**: Optimize your network performance using AI insights.  
+    ### Pages
+    - **Network & Weather**: nearby towers on a map, current weather, and the predicted
+      signal at your coordinates from the nearest tower's distance, current weather and cell load.
+    - **Signal Model**: how the model is trained and evaluated against a path-loss baseline,
+      what-if predictions, and training on your own measurements (CSV upload).
 
-    ### ⚠️ Important Notes:
-    - OpenCelliD **may not return results for India** using latitude/longitude.  
-    - For India, you must enter **MCC, MNC, LAC, and Cell ID manually**.  
-    - Works smoothly for **other countries** with latitude/longitude search.  
+    ### Notes
+    - OpenCelliD's area search often returns nothing for India. There, look up a specific cell
+      with **MCC, MNC, LAC and Cell ID** (visible in Android field-test / network-info apps).
+    - API keys can be typed in the sidebar or set as `OPENCELLID_API_KEY` / `OPENWEATHER_API_KEY`
+      (environment or `.streamlit/secrets.toml`).
     """)
