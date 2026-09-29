@@ -1,6 +1,8 @@
-import requests
 import csv
 import io
+
+import requests
+
 
 def _safe_int(x):
     try:
