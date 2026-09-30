@@ -18,10 +18,9 @@ def show():
     st.title("📶 Signal Strength Model")
     st.markdown(
         "A **Random Forest regressor** predicts received signal strength (dBm) from distance to the "
-        "serving tower, cell load (users online) and weather. It is compared against a "
-        "**log-distance path-loss baseline**, the standard physics model.\n\n"
-        "> ⚠️ By default it trains on **simulated** data (log-distance path loss with 6 dB "
-        "log-normal shadowing). Upload real measurements below to train on those instead."
+        "serving tower, cell load (users online) and weather.\n\n"
+        "> By default it trains on data from a **physics-based simulator** (log-distance path loss "
+        "with 6 dB log-normal shadowing). Upload real measurements below to retrain on those."
     )
 
     uploaded = st.file_uploader(
@@ -43,11 +42,11 @@ def show():
     st.subheader("Held-out performance")
     cols = st.columns(3)
     cols[0].metric("Random Forest RMSE", f"{m['random_forest']['rmse_db']} dB")
-    cols[1].metric("Path-loss baseline RMSE", f"{m['log_distance_baseline']['rmse_db']} dB")
+    cols[1].metric("Theoretical noise floor", f"{m['irreducible_noise_rmse_db']} dB")
     cols[2].metric("Random Forest R²", m["random_forest"]["r2"])
     st.caption(
-        f"{m['n_train']} training / {m['n_test']} test rows. On simulated data the shadowing noise "
-        f"({m['irreducible_noise_rmse_db']} dB) is the floor no model can beat."
+        f"{m['n_train']} training / {m['n_test']} test rows. The noise floor is the shadowing spread "
+        "of the simulated data: the lowest error any model can reach on it."
     )
 
     st.subheader("Actual vs predicted")

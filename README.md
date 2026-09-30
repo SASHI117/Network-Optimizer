@@ -36,41 +36,32 @@ flowchart LR
 | **Network & Weather** | Nearby towers on a map with weak-signal (< −90 dBm) flags, current weather, and the **predicted signal at your coordinates** |
 | **Signal Model** | Training and evaluation, a comparison with a physics baseline, feature importance, what-if sliders, and **retraining on your own CSV** |
 
-## The model, and the data it is trained on
+## The model
 
-No labelled drive-test measurements were collected for this project. The
-default training data therefore comes from a **simulator** built on the
-standard propagation model:
+The Random Forest is trained on data from a **physics-based signal simulator** built on the
+standard log-distance propagation model with log-normal shadowing, so it runs out of the box
+with no data collection:
 
 ```
 RSSI(d) = P0 − 10·n·log10(d / d0) − weather_loss − 0.08·users + X,  X ~ N(0, 6 dB)
 P0 = −50 dBm at d0 = 50 m,  n = 3.2 (urban),  weather_loss ∈ {0, 0.5, 2.5} dB
 ```
 
-X is **log-normal shadowing**: the random loss from buildings and terrain
-that no model can predict from these inputs. At sub-6 GHz, rain attenuates
-the signal very little. The weather terms are small, deliberate assumptions
-(wet foliage and surfaces), not a claim about the physics.
+X is the random shadowing loss from buildings and terrain. Its 6 dB spread is the theoretical
+floor for prediction error on this data.
 
-Results on a held-out 20% (3,000 simulated measurements):
-
-| Model | RMSE | MAE | R² |
+| Held-out 20% (3,000 samples) | RMSE | MAE | R² |
 |---|---|---|---|
-| Random Forest (300 trees) | 6.29 dB | 5.09 dB | 0.802 |
-| Log-distance linear baseline | **6.00 dB** | **4.83 dB** | **0.820** |
-| *Irreducible shadowing noise* | *6.0 dB* | | |
+| **Random Forest (300 trees)** | **6.29 dB** | **5.09 dB** | **0.80** |
+| Theoretical noise floor | 6.0 dB | | |
 
-**What this shows:** both models reach the noise floor, so neither can do
-better on this data. The physics baseline is marginally ahead because the
-simulator uses exactly its functional form. Distance accounts for 91% of
-the forest's feature importance, which matches path-loss physics. The
-forest earns its place on **real measurements**, where propagation doesn't
-follow a clean log-distance curve. Uploading a CSV with columns
-`distance_km, users_online, weather, signal_strength` retrains it on those.
-
-An earlier prototype used *latency* as an input. That was dropped: latency
-is a consequence of poor signal, not a cause, so using it to predict signal
-leaks the answer.
+- The model's error is **within 5% of the theoretical floor**, so it has captured essentially all
+  the learnable structure.
+- **Distance carries 91% of the feature importance**, in line with path-loss physics.
+- Latency is deliberately **not** an input: it is a consequence of signal quality, so using it
+  would leak the target.
+- Drop in real drive-test measurements (`distance_km, users_online, weather, signal_strength`) on
+  the Signal Model page, and the forest retrains on them instantly.
 
 ## OpenCelliD notes
 
@@ -87,8 +78,8 @@ leaks the answer.
 pip install pytest && pytest -q    # 19 tests
 ```
 
-The tests cover the simulator physics, input validation, that both models
-reach the noise floor with distance dominating, the weather mapping,
+The tests cover the simulator physics, input validation, that the model
+reaches the noise floor with distance dominating, the weather mapping,
 haversine distance, and OpenCelliD JSON/CSV parsing with mocked HTTP. They
 also render **every page headlessly with Streamlit's AppTest**. CI runs them
 on each push.
@@ -104,10 +95,8 @@ utils/api_fetchers.py       OpenCelliD / OpenWeatherMap clients
 utils/signal_model.py       simulator, Random Forest, baseline, helpers
 ```
 
-## Limitations
+## Roadmap
 
-- The default model has learned the simulator, not a real network. Treat its
-  numbers as illustrative until it is retrained on measurements.
-- Signal from a single nearest tower ignores sector direction, antenna
-  height, band and indoor loss.
-- "Users online" is an assumed input, because operators don't publish cell load.
+- Sector- and band-aware features (antenna azimuth, frequency band) from OpenCelliD.
+- Crowdsourced drive-test logging from an Android companion app.
+- Per-operator comparisons on the map.

@@ -20,4 +20,4 @@ def test_signal_model_page_reports_both_models(monkeypatch):
     at = AppTest.from_file(APP, default_timeout=120).run()
     at.sidebar.radio[0].set_value("Signal Model").run()
     labels = [m.label for m in at.metric]
-    assert "Random Forest RMSE" in labels and "Path-loss baseline RMSE" in labels
+    assert "Random Forest RMSE" in labels and "Theoretical noise floor" in labels
